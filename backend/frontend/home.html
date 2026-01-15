@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Secure Portal</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f4f6f8;
+            text-align: center;
+            padding-top: 80px;
+        }
+        .box {
+            width: 400px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        a {
+            display: block;
+            margin: 15px;
+            text-decoration: none;
+            color: #0b5ed7;
+            font-weight: bold;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+<div class="box">
+    <h2>Welcome to Secure Portal</h2>
+    <p>Please choose an option</p>
+
+    <!-- Honeypot links -->
+    <a href="/api/login/">User Login</a>
+    <a href="/admin/">Admin Panel</a>
+    <a href="/api/search/?q=test">Search</a>
+</div>
+
+</body>
+</html>
