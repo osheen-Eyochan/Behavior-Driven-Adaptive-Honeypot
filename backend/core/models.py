@@ -9,6 +9,12 @@ class BehaviorLog(models.Model):
     failed_login_attempts = models.IntegerField(default=0)
     request_count = models.IntegerField(default=0)
 
+    # 🔴 ADD THIS FIELD
+    attack_type = models.CharField(
+        max_length=50,
+        default="NORMAL"
+    )
+
     risk_score = models.FloatField(default=0.0)
     risk_level = models.CharField(
         max_length=20,
@@ -23,4 +29,4 @@ class BehaviorLog(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.ip_address} - {self.risk_level}"
+        return f"{self.ip_address} - {self.attack_type} - {self.risk_level}"

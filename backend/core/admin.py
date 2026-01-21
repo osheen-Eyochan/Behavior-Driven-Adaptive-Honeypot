@@ -7,8 +7,7 @@ class BehaviorLogAdmin(admin.ModelAdmin):
         'ip_address',
         'request_count',
         'failed_login_attempts',
+        'attack_type',   # ✅ ADD THIS
         'risk_score',
-        'risk_level'
+        'risk_level',
     )
-    list_filter = ('risk_level',)
-    search_fields = ('ip_address',)
