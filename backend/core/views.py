@@ -1,5 +1,5 @@
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.views.decorators.csrf import csrf_exempt
 from .models import BehaviorLog
 
@@ -48,30 +48,26 @@ def simulate_request(request):
     # --------- UPDATE COUNTERS ---------
     behavior.request_count += 1
 
-    # 🔥 FAILED LOGIN DETECTION
+    # Failed login detection
     if "login" in path and method == "POST":
         behavior.failed_login_attempts += 1
 
     # --------- ATTACK DETECTION ---------
 
-    # 1. Reconnaissance / Scanning
     recon_detected = any(p in path for p in [
         "/admin", "/.env", "/wp-login", "/phpmyadmin"
     ])
 
-    # 2. SQL Injection
     sql_injection_detected = any(
         k in payload.lower()
         for k in ["' or", "1=1", "union", "select", "--", "'--"]
     )
 
-    # 3. 🔥 PATH TRAVERSAL
     path_traversal_detected = any(
         p in (path + payload).lower()
         for p in ["../", "..\\", "/etc/passwd", "boot.ini"]
     )
 
-    # 4. 🔥 COMMAND INJECTION DETECTION
     command_injection_detected = any(
         c in payload.lower()
         for c in [
@@ -82,20 +78,16 @@ def simulate_request(request):
         ]
     )
 
-    # 5. 🔥 BOT ACTIVITY DETECTION
     bot_detected = any(b in ua for b in [
         "curl", "python", "bot", "scanner", "wget", "httpclient", "libwww"
     ])
 
-    # 6. HTTP Method Abuse
     method_abuse_detected = method in ["PUT", "DELETE", "PATCH"]
 
-    # 7. Credential Stuffing
     credential_stuffing_detected = behavior.failed_login_attempts >= 5
 
     # --------- RISK SCORE CALCULATION ---------
     risk_score = 0
-
     risk_score += behavior.request_count * 0.3
     risk_score += behavior.failed_login_attempts * 1
 
@@ -116,23 +108,17 @@ def simulate_request(request):
 
     behavior.risk_score = round(risk_score, 2)
 
-    # --------- 🔥 ATTACK CLASSIFICATION ---------
-
-    # Login based attacks FIRST
+    # --------- ATTACK CLASSIFICATION ---------
     if behavior.failed_login_attempts >= 5:
         attack_type = "CREDENTIAL_STUFFING"
     elif behavior.failed_login_attempts >= 3:
         attack_type = "BRUTE_FORCE"
-
-    # Direct exploitation attacks
     elif command_injection_detected:
         attack_type = "COMMAND_INJECTION"
     elif sql_injection_detected:
         attack_type = "SQL_INJECTION"
     elif path_traversal_detected:
         attack_type = "PATH_TRAVERSAL"
-
-    # Automated / scanning attacks
     elif bot_detected:
         attack_type = "BOT_ACTIVITY"
     elif recon_detected:
@@ -152,15 +138,26 @@ def simulate_request(request):
     else:
         behavior.risk_level = "NORMAL"
 
+    # --------- ATTACK TYPE PRESERVATION ---------
+    if behavior.risk_level != "MALICIOUS":
+        behavior.attack_type = attack_type
+
     behavior.save()
 
     # --------- ADAPTIVE RESPONSE ---------
+
+    # ❌ Malicious → Block
     if behavior.risk_level == "MALICIOUS":
         return JsonResponse(
-            {"error": "Access Denied. Suspicious activity detected."},
+            {"error": "Access Denied. Malicious activity detected."},
             status=403
         )
 
+    # 🔁 Suspicious → Redirect to honeypot
+    if behavior.risk_level == "SUSPICIOUS":
+        return redirect("/")
+
+    # ✅ Normal → Allow
     return JsonResponse({
         "ip": ip,
         "attack_type": attack_type,
@@ -174,15 +171,12 @@ def simulate_request(request):
 # =================================================
 @csrf_exempt
 def fake_login(request):
-
     simulate_request(request)
 
     if request.method == "POST":
-        return render(
-            request,
-            "login.html",
-            {"error": "Invalid username or password"}
-        )
+        return render(request, "login.html", {
+            "error": "Invalid username or password"
+        })
 
     return render(request, "login.html")
 
