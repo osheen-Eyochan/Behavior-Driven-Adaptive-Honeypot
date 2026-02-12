@@ -10,7 +10,7 @@ import time
 BASE_URL = "http://127.0.0.1:8000"
 LOGIN_URL = BASE_URL + "/login/"
 
-TOTAL_REQUESTS = 1000
+TOTAL_REQUESTS = 10000
 
 
 CORRECT_USERS = {
@@ -47,7 +47,7 @@ def random_ip():
 
 
 # Create attackers
-ACTIVE_IPS = [random_ip() for _ in range(100)]
+ACTIVE_IPS = [random_ip() for _ in range(1000)]
 
 
 # Assign ONE attack per IP
