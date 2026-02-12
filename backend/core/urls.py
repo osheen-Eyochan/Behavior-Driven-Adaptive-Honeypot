@@ -3,15 +3,15 @@ from .views import simulate_request, fake_login, fake_home
 
 urlpatterns = [
 
-    # ---------------- Fake Honeypot Website ----------------
-    path('', fake_home),                 # Fake homepage
-    path('login/', fake_login),          # Brute force / credential stuffing
+    # Fake website
+    path('', fake_home),
+    path('login/', fake_login),
 
-    # ---------------- Attack Simulation Endpoints ----------------
-    path('admin-panel/', simulate_request),  # Fake admin access (RECON)
-    path('.env', simulate_request),           # Config probing
-    path('search/', simulate_request),        # SQL Injection attempts
-    path('download/', simulate_request),      # Path Traversal
-    path('exec/', simulate_request),          # Command Injection
-    path('update/', simulate_request),        # HTTP Method abuse
+    # Honeypot endpoints
+    path('admin-panel/', simulate_request),   # Recon
+    path('env/', simulate_request),           # Fake .env
+    path('search/', simulate_request),        # SQLi
+    path('download/', simulate_request),      # Path traversal
+    path('exec/', simulate_request),          # Command injection
+    path('update/', simulate_request),        # HTTP abuse
 ]
