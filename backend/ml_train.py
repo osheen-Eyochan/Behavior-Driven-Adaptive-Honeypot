@@ -5,7 +5,6 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 import joblib
 
-
 # -----------------------------
 # Load Dataset
 # -----------------------------
@@ -16,49 +15,53 @@ print("Rows:", len(df))
 
 
 # -----------------------------
-# Select Features & Target
+# Feature Engineering
 # -----------------------------
 
+# Encode request_method
+method_encoder = LabelEncoder()
+df["request_method"] = method_encoder.fit_transform(df["request_method"])
+
+# Convert user_agent into simple bot/browser feature
+df["is_bot"] = df["user_agent"].str.contains(
+    "bot|curl|python|scanner|wget", case=False
+).astype(int)
+
+
+# -----------------------------
+# Select Features (NO risk_score, NO risk_level)
+# -----------------------------
 X = df[
     [
         "failed_login_attempts",
         "request_count",
-        "risk_score",
-        "risk_level"
+        "request_method",
+        "is_bot"
     ]
 ]
 
-y = df["attack_type"]
-
-
-# -----------------------------
-# Encode Categorical Data
-# -----------------------------
-
-le_risk = LabelEncoder()
-X["risk_level"] = le_risk.fit_transform(X["risk_level"])
-
-le_attack = LabelEncoder()
-y = le_attack.fit_transform(y)
+# Target
+attack_encoder = LabelEncoder()
+y = attack_encoder.fit_transform(df["attack_type"])
 
 
 # -----------------------------
 # Split Data
 # -----------------------------
-
 X_train, X_test, y_train, y_test = train_test_split(
     X, y,
     test_size=0.2,
-    random_state=42
+    random_state=42,
+    stratify=y  # important for class balance
 )
 
 
 # -----------------------------
-# Train Model
+# Train Model (balanced)
 # -----------------------------
-
 model = RandomForestClassifier(
     n_estimators=100,
+    class_weight="balanced",
     random_state=42
 )
 
@@ -66,14 +69,13 @@ model.fit(X_train, y_train)
 
 
 # -----------------------------
-# Test Model
+# Evaluate
 # -----------------------------
-
 y_pred = model.predict(X_test)
 
 accuracy = accuracy_score(y_test, y_pred)
 
-print("\nModel Accuracy:", accuracy)
+print("\nImproved Model Accuracy:", accuracy)
 print("\nClassification Report:\n")
 print(classification_report(y_test, y_pred))
 
@@ -81,9 +83,8 @@ print(classification_report(y_test, y_pred))
 # -----------------------------
 # Save Model
 # -----------------------------
-
 joblib.dump(model, "attack_model.pkl")
-joblib.dump(le_risk, "risk_encoder.pkl")
-joblib.dump(le_attack, "attack_encoder.pkl")
+joblib.dump(attack_encoder, "attack_encoder.pkl")
+joblib.dump(method_encoder, "method_encoder.pkl")
 
-print("\nModel Saved Successfully")
+print("\nImproved Model Saved Successfully")
