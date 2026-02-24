@@ -34,11 +34,19 @@ print("\n✅ Combined Dataset Shape:", data.shape)
 # -----------------------------
 print("\n=== Cleaning Data ===")
 
-# Remove infinite values
 data.replace([float('inf'), -float('inf')], 0, inplace=True)
-
-# Fill missing values
 data.fillna(0, inplace=True)
+
+
+# -----------------------------
+# SAMPLE DATA (VERY IMPORTANT)
+# -----------------------------
+print("\n=== Sampling Data for Faster Training ===")
+
+# Use a manageable subset
+data = data.sample(n=200000, random_state=42)
+
+print("Sampled Dataset Shape:", data.shape)
 
 
 # -----------------------------
@@ -46,9 +54,8 @@ data.fillna(0, inplace=True)
 # -----------------------------
 print("\n=== Preparing Features ===")
 
-# In CICIDS2017 label column has leading space: " Label"
 if " Label" not in data.columns:
-    print("❌ Label column not found. Available columns:")
+    print("❌ Label column not found")
     print(data.columns)
     exit()
 
@@ -56,7 +63,7 @@ X = data.drop(" Label", axis=1)
 y = data[" Label"]
 
 print("Number of Features:", X.shape[1])
-print("\nAttack Types:")
+print("\nAttack Types in Sample:")
 print(y.value_counts())
 
 
