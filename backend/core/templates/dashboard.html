@@ -3,7 +3,7 @@
 <html>
 <head>
     <title>Cyber Defense Console</title>
-
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
     body {
@@ -112,6 +112,10 @@
 </div>
 
 <div class="container">
+<div class="card" style="grid-column: span 2;">
+    <h2>Attack Timeline</h2>
+    <canvas id="timelineChart"></canvas>
+</div>
 
 
 <div class="card">
@@ -162,6 +166,40 @@
 <div class="footer">
 SECURITY MONITORING INTERFACE — RESTRICTED ACCESS
 </div>
+<script>
+    const timelineLabels = [
+        {% for t in timeline %}
+            "{{ t.time|date:'H:i' }}",
+        {% endfor %}
+    ];
+
+    const timelineData = [
+        {% for t in timeline %}
+            {{ t.count }},
+        {% endfor %}
+    ];
+
+    new Chart(document.getElementById("timelineChart"), {
+        type: "line",
+        data: {
+            labels: timelineLabels,
+            datasets: [{
+                label: "Attack Activity",
+                data: timelineData,
+                borderColor: "#00eaff",
+                backgroundColor: "rgba(0,234,255,0.2)",
+                tension: 0.3,
+                fill: true
+            }]
+        }
+    });
+</script>
+<script>
+    // Auto-refresh dashboard every 5 seconds
+    setTimeout(function () {
+        location.reload();
+    }, 5000);
+</script>
 
 </body>
 </html>

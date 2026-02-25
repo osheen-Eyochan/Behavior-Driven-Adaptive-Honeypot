@@ -368,32 +368,27 @@ def fake_home(request):
     return render(request, "home.html")
 
 def security_dashboard(request):
-    """
-    Admin dashboard to monitor attacker behavior.
-    This does NOT affect honeypot logic.
-    """
 
-    attack_counts = (
-        BehaviorLog.objects
-        .values("attack_type")
+    attack_counts = BehaviorLog.objects.values("attack_type") \
         .annotate(total=Count("id"))
-    )
 
-    risk_counts = (
-        BehaviorLog.objects
-        .values("risk_level")
+    risk_counts = BehaviorLog.objects.values("risk_level") \
         .annotate(total=Count("id"))
-    )
 
-    top_ips = (
-        BehaviorLog.objects
-        .order_by("-risk_score")[:5]
-    )
+    top_ips = BehaviorLog.objects.order_by("-risk_score")[:5]
+
+    # 🆕 Timeline data (group by minute)
+    timeline = BehaviorLog.objects \
+        .annotate(time=TruncMinute("timestamp")) \
+        .values("time") \
+        .annotate(count=Count("id")) \
+        .order_by("time")
 
     context = {
         "attack_counts": attack_counts,
         "risk_counts": risk_counts,
-        "top_ips": top_ips
+        "top_ips": top_ips,
+        "timeline": timeline
     }
 
     return render(request, "dashboard.html", context)
