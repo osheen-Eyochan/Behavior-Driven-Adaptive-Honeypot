@@ -1,5 +1,6 @@
 from django.urls import path
 from .views import simulate_request, fake_login, fake_home
+from . import views
 
 urlpatterns = [
 
@@ -14,4 +15,5 @@ urlpatterns = [
     path('download/', simulate_request),      # Path traversal
     path('exec/', simulate_request),          # Command injection
     path('update/', simulate_request),        # HTTP abuse
+    path("dashboard/", views.security_dashboard, name="dashboard"),
 ]

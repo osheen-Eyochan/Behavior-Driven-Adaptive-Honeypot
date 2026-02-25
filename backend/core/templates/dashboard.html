@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>Cyber Defense Console</title>
+
+
+<style>
+    body {
+        background: #000814;
+        color: #e5e7eb;
+        font-family: Consolas, monospace;
+        margin: 0;
+    }
+
+    /* ===== HEADER ===== */
+    .header {
+        background: #000814;
+        padding: 22px;
+        text-align: center;
+        font-size: 30px;
+        color: #00eaff;
+        border-bottom: 2px solid #00eaff;
+        text-shadow: 0 0 10px #00eaff;
+        letter-spacing: 2px;
+    }
+
+    /* ===== GRID LAYOUT ===== */
+    .container {
+        width: 95%;
+        margin: 30px auto;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 25px;
+    }
+
+    /* ===== PANELS ===== */
+    .card {
+        background: #000814;
+        padding: 20px;
+        border: 1px solid #00eaff;
+        box-shadow:
+            0 0 12px #00eaff,
+            inset 0 0 10px rgba(0,234,255,0.2);
+        border-radius: 6px;
+    }
+
+    h2 {
+        color: #00eaff;
+        margin-top: 0;
+        border-bottom: 1px solid #00eaff;
+        padding-bottom: 6px;
+    }
+
+    /* ===== LIST STYLE ===== */
+    ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    li {
+        padding: 8px;
+        border-bottom: 1px solid #1e293b;
+    }
+
+    /* ===== TABLE ===== */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th {
+        color: #00eaff;
+        padding: 12px;
+        border-bottom: 2px solid #00eaff;
+        text-align: left;
+    }
+
+    td {
+        padding: 10px;
+        border-bottom: 1px solid #1e293b;
+    }
+
+    tr:hover {
+        background: rgba(0,234,255,0.08);
+    }
+
+    /* ===== STATUS COLORS ===== */
+    .normal { color: #00ff88; font-weight: bold; }
+    .suspicious { color: #ffd60a; font-weight: bold; }
+    .malicious { color: #ff3b3b; font-weight: bold; }
+
+    /* ===== FOOTER ===== */
+    .footer {
+        text-align: center;
+        padding: 18px;
+        color: #64748b;
+        border-top: 1px solid #1e293b;
+        margin-top: 30px;
+        font-size: 12px;
+    }
+</style>
+
+
+</head>
+
+<body>
+
+<div class="header">
+🛡 CYBER DEFENSE CONSOLE — HONEYPOT MONITOR
+</div>
+
+<div class="container">
+
+
+<div class="card">
+    <h2>Attack Distribution</h2>
+    <ul>
+    {% for a in attack_counts %}
+        <li>{{ a.attack_type }} — {{ a.total }}</li>
+    {% endfor %}
+    </ul>
+</div>
+
+<div class="card">
+    <h2>Risk Level Distribution</h2>
+    <ul>
+    {% for r in risk_counts %}
+        <li class="{{ r.risk_level|lower }}">
+            {{ r.risk_level }} — {{ r.total }}
+        </li>
+    {% endfor %}
+    </ul>
+</div>
+
+<div class="card" style="grid-column: span 2;">
+    <h2>Top Attacker IPs</h2>
+
+    <table>
+        <tr>
+            <th>IP Address</th>
+            <th>Risk Score</th>
+            <th>Attack Type</th>
+        </tr>
+
+        {% for ip in top_ips %}
+        <tr>
+            <td>{{ ip.ip_address }}</td>
+            <td>{{ ip.risk_score }}</td>
+            <td class="{{ ip.risk_level|lower }}">
+                {{ ip.attack_type }}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+
+</div>
+
+<div class="footer">
+SECURITY MONITORING INTERFACE — RESTRICTED ACCESS
+</div>
+
+</body>
+</html>
