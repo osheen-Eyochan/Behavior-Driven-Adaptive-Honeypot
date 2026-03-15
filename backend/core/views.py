@@ -326,6 +326,14 @@ def simulate_request(request):
     elif xss_detected:
         detected_attack = "XSS_ATTACK"
 
+    elif sensitive_file_scan_detected:
+        detected_attack = "SENSITIVE_FILE_SCAN"
+
+    elif parameter_pollution_detected:
+        detected_attack = "PARAMETER_POLLUTION"
+
+    elif api_enumeration_detected:
+        detected_attack = "API_ENUMERATION"
     
     elif recon_detected:
         detected_attack = "RECONNAISSANCE"
