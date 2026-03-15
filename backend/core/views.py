@@ -240,6 +240,17 @@ def simulate_request(request):
         ".env",
         ".git"
 ])
+    parameter_pollution_detected = len(request.GET) > 5
+
+    sensitive_file_scan_detected = any(f in path for f in [
+    ".env",
+    ".git",
+    ".htaccess",
+    ".htpasswd",
+    "config.php"
+])
+    
+    api_enumeration_detected = path.count("/") > 3 and behavior.request_count > 10
 
 
 
