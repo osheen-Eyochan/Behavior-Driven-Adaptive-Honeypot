@@ -14,6 +14,8 @@ class BehaviorLog(models.Model):
     param_count = models.IntegerField(default=0)
     keyword_count = models.IntegerField(default=0)
 
+    request_interval = models.FloatField(default=0)
+
     # 🔴 ADD THIS FIELD
     attack_type = models.CharField(
         max_length=50,
