@@ -249,8 +249,8 @@ def simulate_request(request):
     ".htpasswd",
     "config.php"
 ])
+    api_enumeration_detected = behavior.request_count > 10 and method == "GET"
     
-    api_enumeration_detected = path.count("/") > 3 and behavior.request_count > 10
 
 
 
