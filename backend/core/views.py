@@ -35,7 +35,6 @@ ATTACK_PRIORITY = {
     "CREDENTIAL_STUFFING": 3,
     "PARAMETER_POLLUTION": 3,
     "SENSITIVE_FILE_SCAN": 3,
-    "API_ENUMERATION": 2,
     "BRUTE_FORCE": 2,
     "BOT_ACTIVITY": 1,
     "NORMAL": 0
@@ -249,7 +248,6 @@ def simulate_request(request):
     ".htpasswd",
     "config.php"
 ])
-    api_enumeration_detected = behavior.request_count > 10 and method == "GET"
     
 
 
@@ -297,8 +295,7 @@ def simulate_request(request):
     if sensitive_file_scan_detected:
         risk_score += 3
 
-    if api_enumeration_detected:
-        risk_score += 2    
+    
 
 
     behavior.risk_score = round(risk_score, 2)
@@ -332,8 +329,7 @@ def simulate_request(request):
     elif parameter_pollution_detected:
         detected_attack = "PARAMETER_POLLUTION"
 
-    elif api_enumeration_detected:
-        detected_attack = "API_ENUMERATION"
+    
     
     elif recon_detected:
         detected_attack = "RECONNAISSANCE"
