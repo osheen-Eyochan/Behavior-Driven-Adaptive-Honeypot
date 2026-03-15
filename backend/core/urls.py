@@ -16,4 +16,6 @@ urlpatterns = [
     path('exec/', simulate_request),          # Command injection
     path('update/', simulate_request),        # HTTP abuse
     path("dashboard/", views.security_dashboard, name="dashboard"),
-]
+    path("attacker/<str:ip>/", views.attacker_profile, name="attacker_profile"),
+    path("logs/", views.behavior_log_page, name="behavior_logs")
+    ]

@@ -4,6 +4,9 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import BehaviorLog
 from django.db.models.functions import TruncMinute
 from django.db.models import Count
+from django.db.models import Sum
+from django.utils import timezone
+from datetime import timedelta
 import json
 import joblib
 import os
@@ -22,9 +25,11 @@ attack_encoder = joblib.load(os.path.join(BASE_DIR, "attack_encoder.pkl"))
 # =================================================
 
 ATTACK_PRIORITY = {
-    "COMMAND_INJECTION": 6,
-    "SQL_INJECTION": 5,
+    "COMMAND_INJECTION": 7,
+    "SQL_INJECTION": 6,
+    "FILE_INCLUSION": 5,
     "PATH_TRAVERSAL": 4,
+    "XSS_ATTACK": 4,
     "RECONNAISSANCE": 3,
     "HTTP_METHOD_ABUSE": 3,
     "CREDENTIAL_STUFFING": 3,
@@ -218,6 +223,23 @@ def simulate_request(request):
     credential_stuffing_detected = behavior.failed_login_attempts >= 5
 
 
+# -------- XSS --------
+    xss_detected = any(x in pl for x in [
+        "<script", "javascript:", "onerror=",
+        "onload=", "<img", "<iframe"
+    ])
+
+# -------- FILE INCLUSION --------
+    file_inclusion_detected = any(f in pl for f in [
+        "/etc/passwd",
+        "boot.ini",
+        "windows/system32",
+        ".env",
+        ".git"
+])
+
+
+
     # =================================================
     # RISK SCORE
     # =================================================
@@ -249,6 +271,14 @@ def simulate_request(request):
     if credential_stuffing_detected:
         risk_score += 4
 
+    if xss_detected:
+        risk_score += 3
+
+    if file_inclusion_detected:
+        risk_score += 4
+
+    
+
 
     behavior.risk_score = round(risk_score, 2)
 
@@ -269,6 +299,13 @@ def simulate_request(request):
     elif path_traversal_detected:
         detected_attack = "PATH_TRAVERSAL"
 
+    elif file_inclusion_detected:
+        detected_attack = "FILE_INCLUSION"
+
+    elif xss_detected:
+        detected_attack = "XSS_ATTACK"
+
+    
     elif recon_detected:
         detected_attack = "RECONNAISSANCE"
 
@@ -369,26 +406,77 @@ def fake_home(request):
 
 def security_dashboard(request):
 
+    # -------- Attack Distribution --------
     attack_counts = BehaviorLog.objects.values("attack_type") \
         .annotate(total=Count("id"))
 
+    # -------- Risk Distribution --------
     risk_counts = BehaviorLog.objects.values("risk_level") \
         .annotate(total=Count("id"))
 
+    # -------- Top Attacker IPs --------
     top_ips = BehaviorLog.objects.order_by("-risk_score")[:5]
 
-    # 🆕 Timeline data (group by minute)
+    # -------- Timeline (per minute) --------
     timeline = BehaviorLog.objects \
         .annotate(time=TruncMinute("timestamp")) \
         .values("time") \
         .annotate(count=Count("id")) \
         .order_by("time")
 
+    # -------- GLOBAL THREAT LEVEL --------
+    malicious_count = BehaviorLog.objects.filter(
+        risk_level="MALICIOUS"
+    ).count()
+
+    suspicious_count = BehaviorLog.objects.filter(
+        risk_level="SUSPICIOUS"
+    ).count()
+
+    if malicious_count > 5:
+        threat_level = "CRITICAL"
+    elif suspicious_count > 5:
+        threat_level = "ELEVATED"
+    else:
+        threat_level = "NORMAL"
+
     context = {
         "attack_counts": attack_counts,
         "risk_counts": risk_counts,
         "top_ips": top_ips,
-        "timeline": timeline
+        "timeline": timeline,
+        "threat_level": threat_level
     }
 
     return render(request, "dashboard.html", context)
+
+def attacker_profile(request, ip):
+
+    # All logs for this IP (latest first)
+    logs = BehaviorLog.objects.filter(
+        ip_address=ip
+    ).order_by("-timestamp")
+
+    # -------- Summary Metrics --------
+    total_requests = logs.count()
+
+    failed_logins = logs.aggregate(
+        total=Sum("failed_login_attempts")
+    )["total"] or 0
+
+    latest = logs.first()
+
+    context = {
+        "ip": ip,
+        "logs": logs[:20],  # show recent activity
+        "total_requests": total_requests,
+        "failed_logins": failed_logins,
+        "latest": latest
+    }
+
+    return render(request, "attacker_profile.html", context)
+
+
+def behavior_log_page(request):
+        logs = BehaviorLog.objects.all().order_by("-timestamp")
+        return render(request, "blog.html", {"logs": logs})

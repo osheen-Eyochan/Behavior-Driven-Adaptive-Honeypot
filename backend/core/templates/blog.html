@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<title>Behavior Logs</title>
+
+<style>
+body {
+    background: #000814;
+    color: #e5e7eb;
+    font-family: Consolas, monospace;
+    margin: 0;
+}
+
+.header {
+    padding: 20px;
+    text-align: center;
+    font-size: 28px;
+    color: #00eaff;
+    border-bottom: 2px solid #00eaff;
+}
+
+.container {
+    width: 95%;
+    margin: 30px auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    color: #00eaff;
+    padding: 12px;
+    border-bottom: 2px solid #00eaff;
+    text-align: left;
+}
+
+td {
+    padding: 10px;
+    border-bottom: 1px solid #1e293b;
+}
+
+tr:hover {
+    background: rgba(0,234,255,0.08);
+}
+
+.normal { color: #00ff88; font-weight: bold; }
+.suspicious { color: #ffd60a; font-weight: bold; }
+.malicious { color: #ff3b3b; font-weight: bold; }
+</style>
+
+</head>
+
+<body>
+
+<div class="header">
+📋 BEHAVIOR LOG MONITOR
+</div>
+
+<div class="container">
+<table>
+<tr>
+    <th>IP Address</th>
+    <th>Requests</th>
+    <th>Failed Logins</th>
+    <th>Attack Type</th>
+    <th>Risk Score</th>
+    <th>Risk Level</th>
+</tr>
+
+{% for log in logs %}
+
+<tr>
+    <td>
+        <a href="/attacker/{{ log.ip_address }}/" style="color:#00eaff;">
+            {{ log.ip_address }}
+        </a>
+    </td>
+    <td>{{ log.request_count }}</td>
+    <td>{{ log.failed_login_attempts }}</td>
+    <td>{{ log.attack_type }}</td>
+    <td>{{ log.risk_score }}</td>
+    <td class="{{ log.risk_level|lower }}">
+        {{ log.risk_level }}
+    </td>
+</tr>
+{% endfor %}
+
+</table>
+</div>
+
+</body>
+</html>
