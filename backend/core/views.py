@@ -291,7 +291,14 @@ def simulate_request(request):
     if file_inclusion_detected:
         risk_score += 4
 
-    
+    if parameter_pollution_detected:
+        risk_score += 3
+
+    if sensitive_file_scan_detected:
+        risk_score += 3
+
+    if api_enumeration_detected:
+        risk_score += 2    
 
 
     behavior.risk_score = round(risk_score, 2)
