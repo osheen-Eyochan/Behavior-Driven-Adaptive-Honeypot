@@ -9,6 +9,11 @@ class BehaviorLog(models.Model):
     failed_login_attempts = models.IntegerField(default=0)
     request_count = models.IntegerField(default=0)
 
+    # ---- ADD NEW BEHAVIOR FEATURES HERE ----
+    payload_size = models.IntegerField(default=0)
+    param_count = models.IntegerField(default=0)
+    keyword_count = models.IntegerField(default=0)
+
     # 🔴 ADD THIS FIELD
     attack_type = models.CharField(
         max_length=50,

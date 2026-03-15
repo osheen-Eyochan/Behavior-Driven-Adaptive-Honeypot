@@ -80,6 +80,18 @@ def simulate_request(request):
     payload = str(query) + str(post_data) + raw_body
 
 
+    payload_size = len(payload)
+
+    param_count = len(query) + len(post_data)
+
+    suspicious_keywords = [
+        "select", "union", "<script", "javascript:",
+        "../", "/etc/passwd", "whoami", "ping"
+    ]
+
+    keyword_count = sum(k in payload.lower() for k in suspicious_keywords)
+
+
     # --------- PROFILE ---------
 
     behavior, created = BehaviorLog.objects.get_or_create(
@@ -98,7 +110,10 @@ def simulate_request(request):
         }
     )
 
-
+    behavior.payload_size = payload_size
+    behavior.param_count = param_count
+    behavior.keyword_count = keyword_count
+    
     behavior.request_path = path
     behavior.request_method = method
     behavior.user_agent = ua
