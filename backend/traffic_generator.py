@@ -2,67 +2,64 @@ import requests
 import random
 import time
 
-
-# ======================
-# CONFIG
-# ======================
-
 BASE_URL = "http://127.0.0.1:8000"
 LOGIN_URL = BASE_URL + "/login/"
 
 TOTAL_REQUESTS = 10000
 
 
+# -------------------------
+# USERS
+# -------------------------
+
 CORRECT_USERS = {
     "admin": "admin@123",
     "user1": "user1@123"
 }
 
-USERNAMES = ["admin", "user1", "test", "guest"]
-PASSWORDS = ["123456", "password", "admin123", "root", "qwerty"]
+USERNAMES = ["admin", "user1", "guest", "test"]
+PASSWORDS = ["123456", "password", "admin123", "root"]
 
 
-# ======================
+# -------------------------
 # ATTACK TYPES
-# ======================
+# -------------------------
 
 ATTACK_TYPES = [
     "NORMAL",
     "BRUTE_FORCE",
+    "CREDENTIAL_STUFFING",
     "SQL_INJECTION",
-    "PATH_TRAVERSAL",
     "COMMAND_INJECTION",
-    "RECONNAISSANCE",
+    "PATH_TRAVERSAL",
+    "FILE_INCLUSION",
+    "XSS_ATTACK",
+    "PARAMETER_POLLUTION",
+    "SENSITIVE_FILE_SCAN",
     "HTTP_METHOD_ABUSE",
     "BOT_ACTIVITY"
 ]
 
 
-# ======================
+# -------------------------
 # IP GENERATION
-# ======================
+# -------------------------
 
 def random_ip():
     return ".".join(str(random.randint(1, 254)) for _ in range(4))
 
 
-# Create attackers
-ACTIVE_IPS = [random_ip() for _ in range(1000)]
+ACTIVE_IPS = [random_ip() for _ in range(500)]
+
+IP_PROFILE = {ip: random.choice(ATTACK_TYPES) for ip in ACTIVE_IPS}
 
 
-# Assign ONE attack per IP
-IP_PROFILE = {}
-
-for ip in ACTIVE_IPS:
-    IP_PROFILE[ip] = random.choice(ATTACK_TYPES)
-
-
-# ======================
+# -------------------------
 # HEADERS
-# ======================
+# -------------------------
 
 HUMAN_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+    "User-Agent": "Mozilla/5.0"
 }
 
 BOT_HEADERS = {
@@ -70,11 +67,11 @@ BOT_HEADERS = {
 }
 
 
-# ======================
-# ATTACK BEHAVIOR
-# ======================
+# -------------------------
+# ATTACK FUNCTIONS
+# -------------------------
 
-def normal_login():
+def normal():
     u = random.choice(list(CORRECT_USERS.keys()))
     p = CORRECT_USERS[u]
 
@@ -88,31 +85,60 @@ def brute_force():
     return "POST", LOGIN_URL, {"username": u, "password": p}, HUMAN_HEADERS
 
 
-def sql_attack():
+def credential_stuffing():
+    u = "admin"
+    p = random.choice(PASSWORDS)
+
+    return "POST", LOGIN_URL, {"username": u, "password": p}, HUMAN_HEADERS
+
+
+def sql_injection():
     payload = "' OR 1=1 --"
 
-    return "POST", LOGIN_URL, {
-        "username": payload,
-        "password": payload
-    }, HUMAN_HEADERS
+    return "POST", LOGIN_URL, {"username": payload, "password": payload}, HUMAN_HEADERS
 
 
-def path_attack():
-    file = "../../etc/passwd"
+def command_injection():
+    payload = "admin && whoami"
 
-    return "GET", LOGIN_URL + "?file=" + file, None, HUMAN_HEADERS
-
-
-def command_attack():
-    cmd = "admin && dir"
-
-    return "POST", LOGIN_URL, {"cmd": cmd}, HUMAN_HEADERS
+    return "POST", LOGIN_URL, {"username": payload, "password": "test"}, HUMAN_HEADERS
 
 
-def recon_attack():
-    path = "/admin/"
+def path_traversal():
+    url = LOGIN_URL + "?file=../../etc/passwd"
 
-    return "GET", BASE_URL + path, None, HUMAN_HEADERS
+    return "GET", url, None, HUMAN_HEADERS
+
+
+def file_inclusion():
+    url = LOGIN_URL + "?page=/etc/passwd"
+
+    return "GET", url, None, HUMAN_HEADERS
+
+
+def xss():
+    payload = "<script>alert(1)</script>"
+
+    return "POST", LOGIN_URL, {"username": payload, "password": "test"}, HUMAN_HEADERS
+
+
+def parameter_pollution():
+    params = {
+        "a": "1",
+        "b": "2",
+        "c": "3",
+        "d": "4",
+        "e": "5",
+        "f": "6"
+    }
+
+    return "GET", LOGIN_URL, params, HUMAN_HEADERS
+
+
+def sensitive_file_scan():
+    url = BASE_URL + "/.env"
+
+    return "GET", url, None, HUMAN_HEADERS
 
 
 def method_abuse():
@@ -120,50 +146,54 @@ def method_abuse():
 
 
 def bot_activity():
-    return "POST", LOGIN_URL, {
-        "username": "bot",
-        "password": "scan"
-    }, BOT_HEADERS
+    return "POST", LOGIN_URL, {"username": "bot", "password": "scan"}, BOT_HEADERS
 
 
-# ======================
-# MAIN
-# ======================
+# -------------------------
+# MAIN LOOP
+# -------------------------
 
-print("\nStarting Realistic Attack Simulation...\n")
-
+print("\nStarting Attack Simulation...\n")
 
 for i in range(TOTAL_REQUESTS):
 
-    # Pick attacker
     ip = random.choice(ACTIVE_IPS)
+    attack = IP_PROFILE[ip]
 
-    attack_type = IP_PROFILE[ip]
+    if attack == "NORMAL":
+        method, url, data, headers = normal()
 
-
-    # Select behavior
-    if attack_type == "NORMAL":
-        method, url, data, headers = normal_login()
-
-    elif attack_type == "BRUTE_FORCE":
+    elif attack == "BRUTE_FORCE":
         method, url, data, headers = brute_force()
 
-    elif attack_type == "SQL_INJECTION":
-        method, url, data, headers = sql_attack()
+    elif attack == "CREDENTIAL_STUFFING":
+        method, url, data, headers = credential_stuffing()
 
-    elif attack_type == "PATH_TRAVERSAL":
-        method, url, data, headers = path_attack()
+    elif attack == "SQL_INJECTION":
+        method, url, data, headers = sql_injection()
 
-    elif attack_type == "COMMAND_INJECTION":
-        method, url, data, headers = command_attack()
+    elif attack == "COMMAND_INJECTION":
+        method, url, data, headers = command_injection()
 
-    elif attack_type == "RECONNAISSANCE":
-        method, url, data, headers = recon_attack()
+    elif attack == "PATH_TRAVERSAL":
+        method, url, data, headers = path_traversal()
 
-    elif attack_type == "HTTP_METHOD_ABUSE":
+    elif attack == "FILE_INCLUSION":
+        method, url, data, headers = file_inclusion()
+
+    elif attack == "XSS_ATTACK":
+        method, url, data, headers = xss()
+
+    elif attack == "PARAMETER_POLLUTION":
+        method, url, data, headers = parameter_pollution()
+
+    elif attack == "SENSITIVE_FILE_SCAN":
+        method, url, data, headers = sensitive_file_scan()
+
+    elif attack == "HTTP_METHOD_ABUSE":
         method, url, data, headers = method_abuse()
 
-    else:  # BOT
+    else:
         method, url, data, headers = bot_activity()
 
 
@@ -174,43 +204,20 @@ for i in range(TOTAL_REQUESTS):
     try:
 
         if method == "POST":
-
-            r = requests.post(
-                url,
-                json=data,
-                headers=headers,
-                timeout=5
-            )
+            r = requests.post(url, json=data, headers=headers)
 
         elif method == "GET":
-
-            r = requests.get(
-                url,
-                headers=headers,
-                timeout=5
-            )
+            r = requests.get(url, params=data, headers=headers)
 
         else:
+            r = requests.request(method, url, headers=headers)
 
-            r = requests.request(
-                method,
-                url,
-                headers=headers,
-                timeout=5
-            )
-
-
-        print(
-            f"{i+1:04d} | {ip:15} | {attack_type:18} | {r.status_code}"
-        )
-
+        print(f"{i+1:05d} | {ip} | {attack} | {r.status_code}")
 
     except Exception as e:
-
         print("Error:", e)
 
+    time.sleep(random.uniform(0.5, 1.5))
 
-    time.sleep(random.uniform(0.5, 2))
 
-
-print("\nFinished Simulation.")
+print("\nSimulation Finished.")

@@ -11,13 +11,13 @@ import json
 import joblib
 import os
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+#BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-model = joblib.load(os.path.join(BASE_DIR, "attack_model.pkl"))
-path_encoder = joblib.load(os.path.join(BASE_DIR, "path_encoder.pkl"))
-method_encoder = joblib.load(os.path.join(BASE_DIR, "method_encoder.pkl"))
-agent_encoder = joblib.load(os.path.join(BASE_DIR, "agent_encoder.pkl"))
-attack_encoder = joblib.load(os.path.join(BASE_DIR, "attack_encoder.pkl"))
+#model = joblib.load(os.path.join(BASE_DIR, "attack_model.pkl"))
+#path_encoder = joblib.load(os.path.join(BASE_DIR, "path_encoder.pkl"))
+#method_encoder = joblib.load(os.path.join(BASE_DIR, "method_encoder.pkl"))
+#agent_encoder = joblib.load(os.path.join(BASE_DIR, "agent_encoder.pkl"))
+#attack_encoder = joblib.load(os.path.join(BASE_DIR, "attack_encoder.pkl"))
 
 
 # =================================================
@@ -110,10 +110,21 @@ def simulate_request(request):
         }
     )
 
+    # -------- REQUEST INTERVAL BEHAVIOR --------
+    current_time = timezone.now()
+
+    if not created and behavior.last_seen:
+        interval = (current_time - behavior.last_seen).total_seconds()
+    else:
+        interval = 0
+
+    behavior.request_interval = interval
+    behavior.last_seen = current_time
+
     behavior.payload_size = payload_size
     behavior.param_count = param_count
     behavior.keyword_count = keyword_count
-    
+
     behavior.request_path = path
     behavior.request_method = method
     behavior.user_agent = ua
@@ -122,32 +133,34 @@ def simulate_request(request):
 
             # --------- ML Prediction ---------
 
-    try:
-        encoded_path = path_encoder.transform([path])[0]
-    except:
-        encoded_path = 0   # fallback if unseen
+    #try:
+    #    encoded_path = path_encoder.transform([path])[0]
+    #except:
+    #    encoded_path = 0   # fallback if unseen
 
-    try:
-        encoded_method = method_encoder.transform([method])[0]
-    except:
-        encoded_method = 0
+    #try:
+     #   encoded_method = method_encoder.transform([method])[0]
+    #except:
+     #   encoded_method = 0
 
-    try:
-        encoded_agent = agent_encoder.transform([ua])[0]
-    except:
-        encoded_agent = 0
+    #try:
+   #     encoded_agent = agent_encoder.transform([ua])[0]
+    #except:
+     #   encoded_agent = 0
 
 
-    ml_features = [[
-        encoded_path,
-        encoded_method,
-        encoded_agent,
-        behavior.failed_login_attempts,
-        behavior.request_count
-    ]]
+    #ml_features = [[
+     #   encoded_path,
+      #  encoded_method,
+       ##behavior.failed_login_attempts,
+        #behavior.request_count,
+        #payload_size,
+        #param_count,
+        #keyword_count
+    #]]
 
-    ml_prediction_encoded = model.predict(ml_features)[0]
-    ml_attack_type = attack_encoder.inverse_transform([ml_prediction_encoded])[0]
+    #ml_prediction_encoded = model.predict(ml_features)[0]
+    #ml_attack_type = attack_encoder.inverse_transform([ml_prediction_encoded])[0]
 
     
 
@@ -272,8 +285,8 @@ def simulate_request(request):
     # =================================================
 
     risk_score = 0
-
-    risk_score += behavior.request_count * 0.3
+    risk_score += min(behavior.request_count * 0.3, 5)
+   
     risk_score += behavior.failed_login_attempts * 1
 
 
@@ -361,8 +374,8 @@ def simulate_request(request):
     elif bot_detected:
         detected_attack = "BOT_ACTIVITY"
 
-    print("Rule:", detected_attack)
-    print("ML:", ml_attack_type)
+    #print("Rule:", detected_attack)
+    #print("ML:", ml_attack_type)
     old_attack = behavior.attack_type
 
 
@@ -370,8 +383,8 @@ def simulate_request(request):
 
         behavior.attack_type = detected_attack
                 # If ML disagrees, increase suspicion
-        if detected_attack != ml_attack_type:
-            behavior.risk_score += 2
+      #  if detected_attack != ml_attack_type:
+       #     behavior.risk_score += 2
 
 
 

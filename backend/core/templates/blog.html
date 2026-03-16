@@ -62,10 +62,16 @@ tr:hover {
 <div class="container">
 <table>
 <tr>
-    <th>IP Address</th>
+    <th>IP</th>
+    <th>Path</th>
+    <th>Method</th>
     <th>Requests</th>
     <th>Failed Logins</th>
-    <th>Attack Type</th>
+    <th>Payload</th>
+    <th>Params</th>
+    <th>Keywords</th>
+    <th>Interval</th>
+    <th>Attack</th>
     <th>Risk Score</th>
     <th>Risk Level</th>
 </tr>
@@ -78,10 +84,21 @@ tr:hover {
             {{ log.ip_address }}
         </a>
     </td>
+
+    <td>{{ log.request_path }}</td>
+    <td>{{ log.request_method }}</td>
+
     <td>{{ log.request_count }}</td>
     <td>{{ log.failed_login_attempts }}</td>
+
+    <td>{{ log.payload_size }}</td>
+    <td>{{ log.param_count }}</td>
+    <td>{{ log.keyword_count }}</td>
+    <td>{{ log.request_interval }}</td>
+
     <td>{{ log.attack_type }}</td>
     <td>{{ log.risk_score }}</td>
+
     <td class="{{ log.risk_level|lower }}">
         {{ log.risk_level }}
     </td>

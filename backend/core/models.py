@@ -16,6 +16,8 @@ class BehaviorLog(models.Model):
 
     request_interval = models.FloatField(default=0)
 
+    last_seen = models.DateTimeField(auto_now=True)
+
     # 🔴 ADD THIS FIELD
     attack_type = models.CharField(
         max_length=50,
