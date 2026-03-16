@@ -1,4 +1,5 @@
 from django.urls import path
+from django.urls import re_path
 from .views import simulate_request, fake_login, fake_home
 from . import views
 
@@ -17,5 +18,5 @@ urlpatterns = [
     path('update/', simulate_request),        # HTTP abuse
     path("dashboard/", views.security_dashboard, name="dashboard"),
     path("attacker/<str:ip>/", views.attacker_profile, name="attacker_profile"),
-    path("logs/", views.behavior_log_page, name="behavior_logs")
+    path("logs/", views.behavior_log_page, name="behavior_logs"),
     ]

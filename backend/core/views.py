@@ -57,6 +57,11 @@ def simulate_request(request):
         ip = request.META.get("REMOTE_ADDR", "0.0.0.0")
 
 
+    print("PATH:", request.path)
+    print("POST DATA:", request.POST)
+    print("RAW BODY:", request.body)
+
+
     # --------- BASIC INFO ---------
 
     path = request.path.lower()
@@ -65,6 +70,13 @@ def simulate_request(request):
 
     query = request.GET.dict()
     post_data = request.POST.dict()
+
+# handle JSON payload
+    if not post_data and request.body:
+        try:
+            post_data = json.loads(request.body.decode("utf-8"))
+        except:
+            post_data = {}
 
 
     # --------- RAW BODY (JSON SUPPORT) ---------
@@ -77,8 +89,7 @@ def simulate_request(request):
         pass
 
 
-    payload = str(query) + str(post_data) + raw_body
-
+    payload = " ".join(list(query.values()) + list(post_data.values())) + " " + raw_body
 
     payload_size = len(payload)
 
@@ -94,29 +105,29 @@ def simulate_request(request):
 
     # --------- PROFILE ---------
 
-    behavior, created = BehaviorLog.objects.get_or_create(
-
+    behavior = BehaviorLog(
         ip_address=ip,
-
-        defaults={
-            "request_path": path,
-            "request_method": method,
-            "user_agent": ua,
-            "request_count": 0,
-            "failed_login_attempts": 0,
-            "risk_score": 0,
-            "risk_level": "NORMAL",
-            "attack_type": "NORMAL"
-        }
+        request_path=path,
+        request_method=method,
+        user_agent=ua,
+        request_count=1,
+        failed_login_attempts=0,
+        risk_score=0,
+        risk_level="NORMAL",
+        attack_type="NORMAL"
     )
 
     # -------- REQUEST INTERVAL BEHAVIOR --------
     current_time = timezone.now()
 
-    if not created and behavior.last_seen:
+# FIX: check if last_seen exists
+    if behavior.last_seen is not None:
         interval = (current_time - behavior.last_seen).total_seconds()
     else:
         interval = 0
+
+
+
 
     behavior.request_interval = interval
     behavior.last_seen = current_time
@@ -374,14 +385,15 @@ def simulate_request(request):
     elif bot_detected:
         detected_attack = "BOT_ACTIVITY"
 
+    behavior.attack_type = detected_attack
     #print("Rule:", detected_attack)
     #print("ML:", ml_attack_type)
-    old_attack = behavior.attack_type
+   # old_attack = behavior.attack_type
 
 
-    if ATTACK_PRIORITY.get(detected_attack, 0) >= ATTACK_PRIORITY.get(old_attack, 0):
+   # if ATTACK_PRIORITY.get(detected_attack, 0) >= ATTACK_PRIORITY.get(old_attack, 0):
 
-        behavior.attack_type = detected_attack
+       
                 # If ML disagrees, increase suspicion
       #  if detected_attack != ml_attack_type:
        #     behavior.risk_score += 2

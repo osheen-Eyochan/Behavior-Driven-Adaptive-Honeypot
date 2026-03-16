@@ -5,7 +5,7 @@ import time
 BASE_URL = "http://127.0.0.1:8000"
 LOGIN_URL = BASE_URL + "/login/"
 
-TOTAL_REQUESTS = 10000
+TOTAL_REQUESTS = 100
 
 
 # -------------------------
@@ -40,6 +40,15 @@ ATTACK_TYPES = [
     "BOT_ACTIVITY"
 ]
 
+TARGET_PATHS = [
+    "/login/",
+    "/admin-panel/",
+    "/wp-login/",
+    "/config.php",
+    "/phpmyadmin/",
+    "/.env",
+]
+
 
 # -------------------------
 # IP GENERATION
@@ -49,7 +58,7 @@ def random_ip():
     return ".".join(str(random.randint(1, 254)) for _ in range(4))
 
 
-ACTIVE_IPS = [random_ip() for _ in range(500)]
+ACTIVE_IPS = [random_ip() for _ in range(20)]
 
 IP_PROFILE = {ip: random.choice(ATTACK_TYPES) for ip in ACTIVE_IPS}
 
@@ -71,37 +80,37 @@ BOT_HEADERS = {
 # ATTACK FUNCTIONS
 # -------------------------
 
-def normal():
+def normal(url):
     u = random.choice(list(CORRECT_USERS.keys()))
     p = CORRECT_USERS[u]
 
-    return "POST", LOGIN_URL, {"username": u, "password": p}, HUMAN_HEADERS
+    return "POST", url, {"username": u, "password": p}, HUMAN_HEADERS
 
 
-def brute_force():
+def brute_force(url):
     u = random.choice(USERNAMES)
     p = random.choice(PASSWORDS)
 
-    return "POST", LOGIN_URL, {"username": u, "password": p}, HUMAN_HEADERS
+    return "POST", url, {"username": u, "password": p}, HUMAN_HEADERS
 
 
-def credential_stuffing():
+def credential_stuffing(url):
     u = "admin"
     p = random.choice(PASSWORDS)
 
-    return "POST", LOGIN_URL, {"username": u, "password": p}, HUMAN_HEADERS
+    return "POST", url, {"username": u, "password": p}, HUMAN_HEADERS
 
 
-def sql_injection():
+def sql_injection(url):
     payload = "' OR 1=1 --"
 
-    return "POST", LOGIN_URL, {"username": payload, "password": payload}, HUMAN_HEADERS
+    return "POST", url, {"username": payload, "password": payload}, HUMAN_HEADERS
 
 
-def command_injection():
+def command_injection(url):
     payload = "admin && whoami"
 
-    return "POST", LOGIN_URL, {"username": payload, "password": "test"}, HUMAN_HEADERS
+    return "POST", url, {"username": payload, "password": "test"}, HUMAN_HEADERS
 
 
 def path_traversal():
@@ -116,13 +125,13 @@ def file_inclusion():
     return "GET", url, None, HUMAN_HEADERS
 
 
-def xss():
+def xss(url):
     payload = "<script>alert(1)</script>"
 
-    return "POST", LOGIN_URL, {"username": payload, "password": "test"}, HUMAN_HEADERS
+    return "POST", url, {"username": payload, "password": "test"}, HUMAN_HEADERS
 
 
-def parameter_pollution():
+def parameter_pollution(url):
     params = {
         "a": "1",
         "b": "2",
@@ -132,7 +141,7 @@ def parameter_pollution():
         "f": "6"
     }
 
-    return "GET", LOGIN_URL, params, HUMAN_HEADERS
+    return "GET", url, params, HUMAN_HEADERS
 
 
 def sensitive_file_scan():
@@ -141,12 +150,12 @@ def sensitive_file_scan():
     return "GET", url, None, HUMAN_HEADERS
 
 
-def method_abuse():
-    return "DELETE", LOGIN_URL, None, HUMAN_HEADERS
+def method_abuse(url):
+    return "DELETE", url, None, HUMAN_HEADERS
 
 
-def bot_activity():
-    return "POST", LOGIN_URL, {"username": "bot", "password": "scan"}, BOT_HEADERS
+def bot_activity(url):
+    return "POST", url, {"username": "bot", "password": "scan"}, BOT_HEADERS
 
 
 # -------------------------
@@ -160,20 +169,27 @@ for i in range(TOTAL_REQUESTS):
     ip = random.choice(ACTIVE_IPS)
     attack = IP_PROFILE[ip]
 
+    # Login-related attacks should hit /login/
+    if attack in ["NORMAL", "BRUTE_FORCE", "CREDENTIAL_STUFFING", "SQL_INJECTION", "COMMAND_INJECTION", "XSS_ATTACK"]:
+        url = BASE_URL + "/login/"
+    else:
+        path = random.choice(TARGET_PATHS)
+        url = BASE_URL + path
+
     if attack == "NORMAL":
-        method, url, data, headers = normal()
+        method, url, data, headers = normal(url)
 
     elif attack == "BRUTE_FORCE":
-        method, url, data, headers = brute_force()
+        method, url, data, headers = brute_force(url)
 
     elif attack == "CREDENTIAL_STUFFING":
-        method, url, data, headers = credential_stuffing()
+        method, url, data, headers = credential_stuffing(url)
 
     elif attack == "SQL_INJECTION":
-        method, url, data, headers = sql_injection()
+        method, url, data, headers = sql_injection(url)
 
     elif attack == "COMMAND_INJECTION":
-        method, url, data, headers = command_injection()
+        method, url, data, headers = command_injection(url)
 
     elif attack == "PATH_TRAVERSAL":
         method, url, data, headers = path_traversal()
@@ -182,19 +198,19 @@ for i in range(TOTAL_REQUESTS):
         method, url, data, headers = file_inclusion()
 
     elif attack == "XSS_ATTACK":
-        method, url, data, headers = xss()
+        method, url, data, headers = xss(url)
 
     elif attack == "PARAMETER_POLLUTION":
-        method, url, data, headers = parameter_pollution()
+        method, url, data, headers = parameter_pollution(url)
 
     elif attack == "SENSITIVE_FILE_SCAN":
         method, url, data, headers = sensitive_file_scan()
 
     elif attack == "HTTP_METHOD_ABUSE":
-        method, url, data, headers = method_abuse()
+        method, url, data, headers = method_abuse(url)
 
     else:
-        method, url, data, headers = bot_activity()
+        method, url, data, headers = bot_activity(url)
 
 
     headers = headers.copy()
@@ -217,7 +233,7 @@ for i in range(TOTAL_REQUESTS):
     except Exception as e:
         print("Error:", e)
 
-    time.sleep(random.uniform(0.5, 1.5))
+    time.sleep(random.uniform(0.1, 0.5))
 
 
 print("\nSimulation Finished.")
