@@ -14,7 +14,8 @@ df = pd.read_csv("honeypot_data.csv")
 
 print("Dataset Loaded")
 print("Rows:", len(df))
-
+print("\nAttack Type Distribution:\n")
+print(df["attack_type"].value_counts())
 
 # -----------------------------
 # 2️⃣ Encode Categorical Features
