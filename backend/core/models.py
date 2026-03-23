@@ -5,7 +5,8 @@ class BehaviorLog(models.Model):
     request_path = models.CharField(max_length=255)
     request_method = models.CharField(max_length=10)
     user_agent = models.TextField()
-
+    same_user_attempts = models.IntegerField(default=0)
+    last_username = models.CharField(max_length=100, null=True, blank=True)
     failed_login_attempts = models.IntegerField(default=0)
     request_count = models.IntegerField(default=0)
 

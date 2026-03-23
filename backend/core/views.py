@@ -25,20 +25,20 @@ import os
 # =================================================
 
 ATTACK_PRIORITY = {
-    "COMMAND_INJECTION": 7,
-    "SQL_INJECTION": 6,
-    "FILE_INCLUSION": 5,
-    "PATH_TRAVERSAL": 4,
-    "XSS_ATTACK": 4,
+    "COMMAND_INJECTION": 8,
+    "SQL_INJECTION": 7,
+    "FILE_INCLUSION": 6,
+    "PATH_TRAVERSAL": 6,
+    "XSS_ATTACK": 5,
+    "SENSITIVE_FILE_SCAN": 5,
+    "PARAMETER_POLLUTION": 4,
     "RECONNAISSANCE": 3,
     "HTTP_METHOD_ABUSE": 3,
-    "CREDENTIAL_STUFFING": 3,
-    "PARAMETER_POLLUTION": 3,
-    "SENSITIVE_FILE_SCAN": 3,
-    "BRUTE_FORCE": 2,
-    "BOT_ACTIVITY": 1,
-    "NORMAL": 0
+    "CREDENTIAL_STUFFING": 4,
+    "BRUTE_FORCE": 3,
+    "BOT_ACTIVITY": 3
 }
+
 
 
 # =================================================
@@ -102,45 +102,36 @@ def simulate_request(request):
 
     keyword_count = sum(k in payload.lower() for k in suspicious_keywords)
 
-
-    # --------- PROFILE ---------
-
-    behavior = BehaviorLog(
+    behavior, created = BehaviorLog.objects.get_or_create(
         ip_address=ip,
-        request_path=path,
-        request_method=method,
-        user_agent=ua,
-        request_count=1,
-        failed_login_attempts=0,
-        risk_score=0,
-        risk_level="NORMAL",
-        attack_type="NORMAL"
+        defaults={
+            "request_path": path,
+            "request_method": method,
+            "user_agent": ua,
+            "request_count": 0,
+            "failed_login_attempts": 0,
+            "risk_score": 0,
+            "risk_level": "NORMAL",
+            "attack_type": "NORMAL",
+            "request_interval": 0,
+            "last_seen": timezone.now()
+        }
     )
 
-    # -------- REQUEST INTERVAL BEHAVIOR --------
-    current_time = timezone.now()
+    # ✅ ALWAYS UPDATE SAME ROW
+    behavior.request_count += 1
 
-# FIX: check if last_seen exists
-    if behavior.last_seen is not None:
-        interval = (current_time - behavior.last_seen).total_seconds()
-    else:
-        interval = 0
-
-
-
-
-    behavior.request_interval = interval
-    behavior.last_seen = current_time
+    # update fields
+    behavior.request_path = path
+    behavior.request_method = method
+    behavior.user_agent = ua
 
     behavior.payload_size = payload_size
     behavior.param_count = param_count
     behavior.keyword_count = keyword_count
 
-    behavior.request_path = path
-    behavior.request_method = method
-    behavior.user_agent = ua
-
-    behavior.request_count += 1
+    # optional
+    behavior.last_seen = timezone.now()
 
             # --------- ML Prediction ---------
 
@@ -182,14 +173,19 @@ def simulate_request(request):
     # FAILED LOGIN
     # =================================================
 
+    # =================================================
+# FAILED LOGIN + PATTERN TRACKING
+# =================================================
+
+    username = None
+    password = None
+
     if "login" in path and method == "POST":
 
         username = request.POST.get("username")
         password = request.POST.get("password")
 
-
         if not username or not password:
-
             try:
                 body = json.loads(raw_body)
                 username = body.get("username")
@@ -198,17 +194,27 @@ def simulate_request(request):
                 username = None
                 password = None
 
-
         valid_users = {
             "admin": "admin@123",
             "user1": "user1@123"
         }
 
-
         if username and password:
 
             if username not in valid_users or valid_users.get(username) != password:
                 behavior.failed_login_attempts += 1
+
+                # ✅ initialize safely
+                if not hasattr(behavior, "same_user_attempts") or behavior.same_user_attempts is None:
+                    behavior.same_user_attempts = 0
+
+                # ✅ pattern tracking
+                if behavior.last_username == username:
+                    behavior.same_user_attempts += 1
+                else:
+                    behavior.same_user_attempts = 1
+
+                behavior.last_username = username
 
 
     # =================================================
@@ -236,11 +242,9 @@ def simulate_request(request):
 
 
     path_traversal_detected = any(
-        p in pl for p in [
-            "../", "..\\", "/etc/passwd",
-            "boot.ini", "windows/system32"
-        ]
+        p in pl for p in ["../", "..\\"]
     )
+
 
 
     command_injection_detected = any(
@@ -271,13 +275,10 @@ def simulate_request(request):
     ])
 
 # -------- FILE INCLUSION --------
-    file_inclusion_detected = any(f in pl for f in [
-        "/etc/passwd",
-        "boot.ini",
-        "windows/system32",
-        ".env",
-        ".git"
-])
+    # FILE INCLUSION → direct file access
+    file_inclusion_detected = any(
+        f in pl for f in ["/etc/passwd", ".env", ".git"]
+    )
     parameter_pollution_detected = len(request.GET) > 5
 
     sensitive_file_scan_detected = any(f in path for f in [
@@ -295,97 +296,73 @@ def simulate_request(request):
     # RISK SCORE
     # =================================================
 
-    risk_score = 0
-    risk_score += min(behavior.request_count * 0.3, 5)
    
-    risk_score += behavior.failed_login_attempts * 1
-
-
-    if recon_detected:
-        risk_score += 2
-
-    if sql_injection_detected:
-        risk_score += 4
-
-    if path_traversal_detected:
-        risk_score += 4
-
-    if command_injection_detected:
-        risk_score += 5
-
-    if bot_detected:
-        risk_score += 2
-
-    if method_abuse_detected:
-        risk_score += 3
-
-    if credential_stuffing_detected:
-        risk_score += 4
-
-    if xss_detected:
-        risk_score += 3
-
-    if file_inclusion_detected:
-        risk_score += 4
-
-    if parameter_pollution_detected:
-        risk_score += 3
-
-    if sensitive_file_scan_detected:
-        risk_score += 3
-
-    
-
-
-    behavior.risk_score = round(risk_score, 2)
-
 
     # =================================================
     # CLASSIFICATION
     # =================================================
 
-    detected_attack = "NORMAL"
-
+    detected_attacks = []
 
     if command_injection_detected:
-        detected_attack = "COMMAND_INJECTION"
+        detected_attacks.append("COMMAND_INJECTION")
 
-    elif sql_injection_detected:
-        detected_attack = "SQL_INJECTION"
+    if sql_injection_detected:
+        detected_attacks.append("SQL_INJECTION")
 
-    elif path_traversal_detected:
-        detected_attack = "PATH_TRAVERSAL"
+    if path_traversal_detected:
+        detected_attacks.append("PATH_TRAVERSAL")
 
-    elif file_inclusion_detected:
-        detected_attack = "FILE_INCLUSION"
+    if file_inclusion_detected:
+        detected_attacks.append("FILE_INCLUSION")
 
-    elif xss_detected:
-        detected_attack = "XSS_ATTACK"
+    if xss_detected:
+        detected_attacks.append("XSS_ATTACK")
 
-    elif sensitive_file_scan_detected:
-        detected_attack = "SENSITIVE_FILE_SCAN"
+    if sensitive_file_scan_detected:
+        detected_attacks.append("SENSITIVE_FILE_SCAN")
 
-    elif parameter_pollution_detected:
-        detected_attack = "PARAMETER_POLLUTION"
+    if parameter_pollution_detected:
+        detected_attacks.append("PARAMETER_POLLUTION")
 
-    
-    
-    elif recon_detected:
-        detected_attack = "RECONNAISSANCE"
+    if recon_detected:
+        detected_attacks.append("RECONNAISSANCE")
 
-    elif method_abuse_detected:
-        detected_attack = "HTTP_METHOD_ABUSE"
+    if method_abuse_detected:
+        detected_attacks.append("HTTP_METHOD_ABUSE")
 
+    if bot_detected:
+        detected_attacks.append("BOT_ACTIVITY")
+
+    if username and password:
+
+        if username not in valid_users or valid_users.get(username) != password:
+            behavior.failed_login_attempts += 1
+
+        # track username pattern
+            if behavior.last_username == username:
+                behavior.same_user_attempts += 1
+            else:
+                behavior.same_user_attempts = 1
+
+            behavior.last_username = username
+    # Credential stuffing → same username repeatedly
+    if getattr(behavior, "same_user_attempts", 0) >= 5:
+        detected_attacks.append("CREDENTIAL_STUFFING")
+
+    # Brute force → many failed attempts (different users)
     elif behavior.failed_login_attempts >= 5:
-        detected_attack = "CREDENTIAL_STUFFING"
+        detected_attacks.append("BRUTE_FORCE")
 
-    elif behavior.failed_login_attempts >= 3:
-        detected_attack = "BRUTE_FORCE"
-
-    elif bot_detected:
-        detected_attack = "BOT_ACTIVITY"
-
-    behavior.attack_type = detected_attack
+    # FINAL SELECTION (priority-based)
+    if detected_attacks:
+        detected_attacks.sort(
+            key=lambda x: ATTACK_PRIORITY.get(x, 0),
+            reverse=True
+        )
+        behavior.attack_type = detected_attacks[0]
+    else:
+        behavior.attack_type = "NORMAL"
     #print("Rule:", detected_attack)
     #print("ML:", ml_attack_type)
    # old_attack = behavior.attack_type
@@ -399,15 +376,37 @@ def simulate_request(request):
        #     behavior.risk_score += 2
 
 
+ # =========================
+# STRUCTURED RISK SCORING
+# =========================
+
+    risk_score = 0
+
+    # 1. Behavior score
+    risk_score += min(behavior.request_count * 0.3, 5)
+    risk_score += behavior.failed_login_attempts * 1.2
+
+    # 2. Attack severity (use your priority table)
+    for attack in detected_attacks:
+        risk_score += ATTACK_PRIORITY.get(attack, 0)
+
+    # 3. Frequency boost (VERY IMPORTANT)
+    if behavior.request_count > 10:
+        risk_score += 2
+
+    if behavior.request_count > 20:
+        risk_score += 3
+
+    behavior.risk_score = round(risk_score, 2)
 
     # =================================================
     # RISK LEVEL
     # =================================================
 
-    if behavior.risk_score >= 12:
+    if behavior.risk_score >= 15:
         behavior.risk_level = "MALICIOUS"
 
-    elif behavior.risk_score >= 6:
+    elif behavior.risk_score >= 8:
         behavior.risk_level = "SUSPICIOUS"
 
     else:
@@ -543,5 +542,13 @@ def attacker_profile(request, ip):
 
 
 def behavior_log_page(request):
-        logs = BehaviorLog.objects.all().order_by("-timestamp")
-        return render(request, "blog.html", {"logs": logs})
+
+    logs = BehaviorLog.objects.all().order_by("-timestamp")
+
+    print("Total logs:", logs.count())   # debugging
+
+    context = {
+        "logs": logs
+    }
+
+    return render(request, "blog.html", context)
